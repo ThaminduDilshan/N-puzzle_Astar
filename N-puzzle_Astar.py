@@ -2,7 +2,7 @@ import sys
 import copy
 
 
-# get heuristic value on no of misplaced tiles
+# get heuristic value based on no of misplaced tiles for puzzle
 def heu_no_of_misplaced(st, gl):
     heu = 0
     for l_no in range(0, len(st), 1):
@@ -13,6 +13,27 @@ def heu_no_of_misplaced(st, gl):
     
     return heu
 
+
+heu_selector = ''
+
+# get heuristic based on manhatten distance for given node
+def heu_node(node, current_loc, goal_puz):
+    desired = None
+    for i in range(0, len(goal_puz), 1):
+        if str(node) in goal_puz[i]:
+            desired = [ i, goal_puz[i].index(str(node)) ]
+            break
+    heu = abs(int(current_loc[0]) - int(desired[0])) + abs(int(current_loc[1]) - int(desired[1]))
+    return heu
+
+# get heuristic value based on manhatten distance for puzzle
+def heu_manhatten(st, gl):
+    heu = 0
+    for rw_no in range(0, len(st), 1):
+        for ind in range(0, len(st[rw_no]), 1):
+            if(st[rw_no][ind] != '-'):
+                heu += heu_node( st[rw_no][ind], [rw_no, ind], gl )
+    return heu
 
 # get possible move of a empty node
 def possible_move(puzzle, node_id):         # node_id = [row][column]
@@ -115,11 +136,13 @@ def A_star(st1, gl):
     moves_taken = ""
     evaluating_puzzle = st1
     breakFlag = False
+    depth = 0
     
     while(not breakFlag):
         min_move_puzz = None
         min_move_direction = None
         min_move_element = None
+        depth += 1
 
         empty_slots = getEmptySlots(evaluating_puzzle)                 # get empty slots
         for slot in empty_slots:
@@ -127,7 +150,12 @@ def A_star(st1, gl):
             if( len(moves) != 0 ):
                 for move in moves:                      # for each move
                     new_puzzle = moved_puzzle(evaluating_puzzle, slot, move)
-                    heuristic = heu_no_of_misplaced(new_puzzle, gl)
+                    
+                    if(heu_selector=='manhatten'):          # manhatten heuristic
+                        heuristic = heu_manhatten(new_puzzle, gl) + depth
+                    else:               # no of misplaced tiles heuristic
+                        heuristic = heu_no_of_misplaced(new_puzzle, gl) + depth
+                    
                     if( min_move_puzz == None ):            # if at initial move of current iteration
                         min_move_puzz = [new_puzzle, heuristic]
                         min_move_direction = move[2]        # moved direction (actual element)
@@ -136,7 +164,7 @@ def A_star(st1, gl):
                         min_move_puzz = [new_puzzle, heuristic]
                         min_move_direction = move[2]        # moved direction (actual element)
                         min_move_element = move[3]          # moved element (actual element)
-                    if(heuristic == 0):
+                    if(heuristic == 0+depth):
                         breakFlag = True
                         break
 
@@ -175,14 +203,21 @@ try:
             if line != '':
                 goal.append(line.split('\t'))
 
+    # select heuristic mode (manhatten, misplaced)
+    heu_selector = 'manhatten'
+
     # execute A* algorithm
     moveStr = A_star(start, goal)
     moveStr = moveStr[:-2]
-    print(moveStr)
+    print("Input file : " + start_file + "\nGoal file : " + goal_file)
+    print("Output : " + moveStr)
+    print("Output file : output.txt")
 
     # write output to 'output.txt'
     with open('output.txt', 'w') as fo:
         fo.write(moveStr)
+    print('success')
+
 
 except IndexError:
     print("[ERROR] Invalid command line arguments !!!")
@@ -190,3 +225,10 @@ except FileNotFoundError:
     print("[ERROR] File not found !!!")
 except:
     print("[ERROR] Error during execution !!!")
+
+
+'''
+TO RUN TYPE BELOW COMMAND
+    python N-puzzle_Astar.py start.txt goal.txt
+
+'''
