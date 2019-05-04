@@ -1,4 +1,4 @@
-import sys
+# import sys
 import copy
 
 
@@ -32,6 +32,7 @@ def heu_manhatten(st, gl):
             if(st[rw_no][ind] != '-'):
                 heu += heu_node( st[rw_no][ind], [rw_no, ind], gl )
     return heu
+
 
 # get possible move of a empty node
 def possible_move(puzzle, node_id):         # node_id = [row][column]
@@ -128,22 +129,76 @@ def getEmptySlots(puzzle):
     return empty
 
 
+# get puzzle with minimum f(n)
+def get_min(arr):            # [[val, puzzle], ..]
+    new_arr = copy.deepcopy(arr)
+    min_ = new_arr.pop(0)       # pop first element
+    while(len(new_arr)!=0):
+        ele = new_arr.pop()
+        if( ele[0] < min_[0] ):
+            min_ = ele
+    index = arr.index( [min_[0], min_[1], min_[2], min_[3], min_[4], min_[5]] )
+    return [min_, index]
+
+
+# check if f(n) has decreased
+def check_decreased(arr, puzzle, fn):
+    new_arr = copy.deepcopy(arr)
+    puz_list = []
+    val_list = []
+
+    while(len(new_arr)!=0):
+        ele = new_arr.pop(0)
+        puz_list.append(ele[1])         # add puzzles to an array
+        val_list.append(ele[0])         # add f(n) values to an array
+
+    if( puz_list.count(puzzle) != 0 ):      # if exist in puzzle list
+        index = puz_list.index(puzzle)      # get index of puzzle
+        val = val_list[index]               # get f(n) of relevent puzzle
+        if( int(val) < int(fn) ):
+            return [True, val, index]
+        elif( int(val) == int(fn) ):
+            return [True, 'same']
+        else:
+            return [False, 'in']
+    else:
+        return [False, 'not']
+
+
 # A* algorithm to reach goal
 def A_star(st1, gl, heu_selector):
-    prev_move1 = None
-    prev_move2 = None
-    # moves_taken = []
-    moves_taken = ""
     evaluating_puzzle = st1
     breakFlag = False
-    depth = 0
-    
-    while(not breakFlag):
-        min_move_puzz = None
-        min_move_direction = None
-        min_move_element = None
-        depth += 1
+    opened = []
+    closed = []
 
+    if(heu_selector=='manhatten'):          # manhatten heuristic
+        fn = heu_manhatten(st1, gl) + 0
+    else:               # no of misplaced tiles heuristic
+        fn = heu_no_of_misplaced(st1, gl) + 0
+    opened.append( [fn, evaluating_puzzle, 0, fn, None, None] )         # fourth parameter is heuristic (here it is same as fn)
+
+    while(True):
+        if( len(opened) == 0 ):         # terminate if opened is empty (no result)
+            return ''
+        
+        # get min from opened and save in closed
+        temp_data = get_min(opened)
+        cur_data = temp_data[0]
+        evaluating_puzzle = cur_data[1]
+        poped = opened.pop(temp_data[1])
+        closed.append( poped )
+        
+        # terminate condition (result success)
+        if heu_no_of_misplaced(evaluating_puzzle, gl) == 0:     # goal reached
+            fin_current = cur_data
+            moved_path = ''
+            while( fin_current[4] != None ):
+                moved_path += '(' + str(fin_current[5][0]) + ', ' + str(fin_current[5][1]) + '), '
+                fin_current = fin_current[4]
+            return moved_path
+
+        # get each successor for a given node
         empty_slots = getEmptySlots(evaluating_puzzle)                 # get empty slots
         for slot in empty_slots:
             moves = possible_move(evaluating_puzzle, slot)             # move each empty slot if possible
@@ -152,39 +207,24 @@ def A_star(st1, gl, heu_selector):
                     new_puzzle = moved_puzzle(evaluating_puzzle, slot, move)
                     
                     if(heu_selector=='manhatten'):          # manhatten heuristic
-                        heuristic = heu_manhatten(new_puzzle, gl) + depth
+                        heuristic = heu_manhatten(new_puzzle, gl)
                     else:               # no of misplaced tiles heuristic
-                        heuristic = heu_no_of_misplaced(new_puzzle, gl) + depth
-                    
-                    if( min_move_puzz == None ):            # if at initial move of current iteration
-                        min_move_puzz = [new_puzzle, heuristic]
-                        min_move_direction = move[2]        # moved direction (actual element)
-                        min_move_element = move[3]          # moved element (actual element)
-                    elif( heuristic < min_move_puzz[1] ):       # if current heu is less than previous minimum hue
-                        min_move_puzz = [new_puzzle, heuristic]
-                        min_move_direction = move[2]        # moved direction (actual element)
-                        min_move_element = move[3]          # moved element (actual element)
-                    if(heuristic == 0+depth):
-                        breakFlag = True
-                        break
+                        heuristic = heu_no_of_misplaced(new_puzzle, gl)
 
-        evaluating_puzzle = min_move_puzz[0]
-        moves_taken += '(' + str(min_move_element) + ',' + str(min_move_direction) + ')' + ', '    # append move actually taken
-        # moves_taken.append( (min_move_element, min_move_direction) )    # move actually taken
-        # print( (min_move_element, min_move_direction) )
+                    check_open = check_decreased(opened, new_puzzle, heuristic+cur_data[2]+1)
+                    if(check_open[0] == True):           # node with a lesser f(n) in the open
+                        continue        # skip
+                    else:
+                        check_close = check_decreased(closed, new_puzzle, heuristic+cur_data[2]+1)
+                        if(check_close[0] == True):         # node with a lesser f(n) in the closed
+                            if(check_close[1] != 'same'):
+                                ele_close = closed.pop(check_close[2])
+                                opened.append(ele_close)
+                        else:           # lesser node not in open or closed
+                            gm = cur_data[2] + 1
+                            fm = heuristic + gm
+                            opened.append( [fm, new_puzzle, gm, heuristic, cur_data, (move[3], move[2])] )
 
-        if min_move_element == None:
-            breakFlag = True
-
-        move = (min_move_element, min_move_direction)        # set break point for infinite loop
-        if ( move == prev_move1 or move == prev_move2):
-            breakFlag = True
-        if depth%2 == 0:
-            prev_move2 = (min_move_element, min_move_direction)
-        else:
-            prev_move1 = (min_move_element, min_move_direction)
-
-    return moves_taken
 
 
 

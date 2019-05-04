@@ -5,10 +5,10 @@ from random import randint
 # returns a random puzzle string for given n, N
 def random_puzzle(n, N):
     array = []
-    for st in range(1, N+1, 1):
+    for st in range(1, N+1+1, 1):
         array.append(str(st))
     array.append('-')
-    array.append('-')
+    # array.append('-')
 
     puzzle = []
     for i in range(0, n, 1):
@@ -26,7 +26,7 @@ final_result = ''
 
 for test in range(1, 101, 1):
     print( "testing : " + ('%03d' % test) )
-    n = randint(4, 4)
+    n = randint(3, 3)
     N = (n**2) - 2
     start = random_puzzle(n ,N)
     goal = random_puzzle(n, N)
