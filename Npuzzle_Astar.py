@@ -194,7 +194,7 @@ def A_star(st1, gl, heu_selector):
             fin_current = cur_data
             moved_path = ''
             while( fin_current[4] != None ):
-                moved_path += '(' + str(fin_current[5][0]) + ', ' + str(fin_current[5][1]) + '), '
+                moved_path = '(' + str(fin_current[5][0]) + ', ' + str(fin_current[5][1]) + '), ' + moved_path
                 fin_current = fin_current[4]
             return moved_path
 
